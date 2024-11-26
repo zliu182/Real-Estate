@@ -18,6 +18,7 @@ const dbConfig = {
 
 // Simulated in-memory hash-map for staff lookup
 let staffHashMap = new Map()
+let clientHashMap = new Map()
 
 // Function to populate staff hash-map
 async function populateStaffHashMap() {
@@ -32,6 +33,24 @@ async function populateStaffHashMap() {
     })
 
     console.log('Staff hash-map populated successfully!')
+  } catch (err) {
+    console.error('Error populating staff hash-map:', err)
+  }
+}
+
+async function populateClientHashMap() {
+  try {
+    const query = 'SELECT clientno, email, preftype, maxrent, telno FROM dh_client'
+    const result = await executeQuery(query)
+
+    result.rows.forEach((row) => {
+      console.log(row)
+
+      const [clientno, email, preftype, maxrent, telno] = row
+      clientHashMap.set(clientno, {  email, preftype, maxrent, telno  })
+    })
+
+    console.log('Client hash-map populated successfully!')
   } catch (err) {
     console.error('Error populating staff hash-map:', err)
   }
@@ -173,8 +192,96 @@ app.put('/staff', async (req, res) => {
   }
 })
 
+app.get('/client', async (req, res) => {
+  try {
+    const query = 'SELECT * FROM dh_client'
+    const result = await executeQuery(query)
+
+    const columnNames = [
+      'client_no',
+      'first_name',
+      'last_name',
+      'telephone',
+      'street',
+      'city',
+      'email',
+      'pref_type',
+      'maxrent',
+    ]
+
+    
+    const jsonResult = result.rows.map((row) => {
+      return columnNames.reduce((obj, col, index) => {
+        obj[col] = row[index]
+        return obj
+      }, {})
+    })
+
+    res.json(jsonResult) // Sends the staff data as JSON
+  } catch (err) {
+    res.status(500).send('Error retrieving staff data')
+  }
+})
+
+app.put('/client', async (req, res) => {
+  console.log('====================')
+  const { clientNo, email, maxrent, phone, pref_type } = req.body
+
+  console.log('clientNo: ',clientNo)
+
+  if (!clientNo) {
+    return res.status(400).send('Client number is required')
+  }
+
+  if (!clientHashMap.has(clientNo)) {
+    return res.status(404).send(`Client number ${clientNo} not found`)
+  }
+
+  try {
+    const query = `  BEGIN
+        UPDATE dh_client
+        SET
+          preftype = :p_preftype,
+          telno = :p_telephone,
+          email = :p_email,
+          maxrent = :p_maxrent
+        WHERE clientno = :p_clientno;
+
+        COMMIT;
+      END;`
+    const binds = {
+      p_clientno: clientNo,
+      p_preftype: pref_type || null,
+      p_telephone: phone || null,
+      p_email: email || null,
+      p_maxrent: maxrent || null
+    }
+
+    await executeQuery(query, binds)
+
+    // Update in-memory hash-map
+    const updatedClient = clientHashMap.get(clientNo)
+    if (pref_type) updatedClient.preftype = pref_type
+    if (phone) updatedClient.telno = phone
+    if (email) updatedClient.email = email
+    if (maxrent) updatedClient.maxrent = maxrent
+
+
+    clientHashMap.set(clientNo, updatedClient)
+
+    // Send back the updated staff data in an array format
+    res.json([updatedClient]) // Return the updated staff info as an array
+  } catch (err) {
+    console.error(err)
+    res.status(500).send('Error updating client information')
+  }
+})
+
+
+
 // Start the Express server
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`)
   populateStaffHashMap() // Populate the hash-map at startup
+  populateClientHashMap()
 })
