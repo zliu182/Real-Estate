@@ -506,7 +506,9 @@ app.get('/client', async (req, res) => {
 })
 
 app.put('/client', async (req, res) => {
-  const { clientno, fname, lname, telno, email, preftype, maxrent } = req.body
+  const { clientno, telno, email, preftype, maxrent } = req.body
+
+  console.log(clientno)
 
   // Validate that clientno is provided
   if (!clientno) {
@@ -541,8 +543,6 @@ app.put('/client', async (req, res) => {
 
     const binds = {
       p_clientno: clientno,
-      p_fname: fname || '', // Use empty string if no first_name is provided
-      p_lname: lname || '',
       p_telno: telno || '',
       p_email: email || '',
       p_preftype: preftype || '',
