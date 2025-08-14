@@ -18,6 +18,7 @@ const dbConfig = {
 
 // Simulated in-memory hash-map for staff lookup
 let staffHashMap = new Map()
+let clientHashMap = new Map()
 
 // Function to populate staff hash-map
 async function populateStaffHashMap() {
@@ -32,6 +33,24 @@ async function populateStaffHashMap() {
     })
 
     console.log('Staff hash-map populated successfully!')
+  } catch (err) {
+    console.error('Error populating staff hash-map:', err)
+  }
+}
+
+async function populateClientHashMap() {
+  try {
+    const query = 'SELECT clientno, email, preftype, maxrent, telno FROM dh_client'
+    const result = await executeQuery(query)
+
+    result.rows.forEach((row) => {
+      console.log(row)
+
+      const [clientno, email, preftype, maxrent, telno] = row
+      clientHashMap.set(clientno, {  email, preftype, maxrent, telno  })
+    })
+
+    console.log('Client hash-map populated successfully!')
   } catch (err) {
     console.error('Error populating staff hash-map:', err)
   }
@@ -635,4 +654,5 @@ app.post('/client', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`)
   populateStaffHashMap() // Populate the hash-map at startup
+  populateClientHashMap()
 })
